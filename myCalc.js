@@ -2,4 +2,5 @@
 
 function myCalc(expr, v){
 	this.s_idle	= 1;
+	this.s_string_double	= 2;
 }
