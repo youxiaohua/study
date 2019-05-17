@@ -18,7 +18,6 @@ function myCalc(expr, v){
     this.vars = v;
     this.debug = true;
     this.debug2 = true;
-
     this.error = false;
     this.operators = {
 	'(' :{"priority":1,"dir":"ltr","opers":0},
