@@ -104,6 +104,71 @@ myCalc.prototype.pass1 = function(expr){
 		}
 		pos++;
 	    }
+	    break;
+	case this.s_string_double:
+	    if(ch === '"'){
+		stack.push({"type":"value","data_type":"string","token":token});
+		pos++;
+		stat = this.s_idle;
+	    }else{
+		token = token + ch;
+		pos++;
+	    }
+	    break;
+	case this.s_string_single:
+	    if(ch === "'"){
+		stack.push({"type":"value","data_type":"string","token":token});
+		pos++;
+		stat = this.s_idle;
+	    }else{
+		token = token + ch;
+		pos++;
+	    }
+	    break;
+	case this.s_number_int:
+	    if(ch === '.'){
+		token = token + ch;
+		pos++;
+		stat = this.s_number_float;
+	    }else if(this.c_digital.indexOf(ch) !== -1){
+		token = token + ch;
+		pos++;
+	    }else{
+		stack.push({"type":"value","data_type":"int","token":token});
+		pos++;
+		stat = this.s_idle;
+	    }
+	    break;
+	case this.s_number_float:
+	    if(this.c_digital.indexOf(ch) !== -1){
+		token = token + ch;
+		pos++;
+	    }else{
+		stack.push({"type":"value","data_type":"float","token":token});
+		pos++;
+		stat = this.s_idle;
+	    }
+	    break;
+	case this.s_name:
+	    if(this.c_prefix.indexOf(ch) !== -1){
+		token = token + ch;
+		pos++;
+	    }else if(this.c_digital.indexOf(ch) !== -1){
+		token = token + ch;
+		pos++;
+	    }else if(['true','float'].indexOf(token) !== -1){
+		stack.push({"type":"value","data_type":"bool","token":token});
+		pos++;
+		stat = this.idle;
+	    }else if(token === 'in'){
+		stack.push({"type":"operator","token":token});
+	    }
+	    }else{
+		stack.push({"type":"value","data_type":"name","token":token});
+		pos++;
+		stat = this.s_idle;
+	    }
 	}
+	
     }
 };
