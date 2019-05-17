@@ -95,6 +95,45 @@ myCalc.prototype.get_var = function(token,obj){
     }
     return result;
 };
+myCalc.prototype.calc_dot = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t1.data_type === 'object' && t2.data_type === 'name'){
+	result = this.get_var(t2.token,t1.token);
+    }else{
+	throw "data type error :" + t1.token + t2.token;
+    }
+    return result;
+};
+myCalc.prototype.calc_power = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    if(['float','int'].indexOf(t1.data_type) !== -1 && t2.data_type === 'int'){
+	v1 = parseFloat(t1.token);
+	v2 = parseFloat(t2.token);
+	v = 1;
+	var i;
+	for(i=0;i<v2;i++){
+	    v = v1 * v;
+	}
+	result = {"type":"value","data_type":"int","token":v.toString()};
+    }else{
+	throw "data type error :" + t1.token + t2.token;
+    }
+    return result;
+    
+};
 myCalc.prototype.calc_plus = function(arg){
     var t1 = arg[0];
     var t2 = arg[1];
@@ -144,6 +183,104 @@ myCalc.prototype.calc_sub = function(arg){
 	}else{
 	    result = {"type":"value","data_type":"int","token":v.toString()};
 	}
+    }else{
+	throw "data type error :" + t1.token + t2.token;
+    }
+    return result;
+    
+};
+myCalc.prototype.calc_bool_gt = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    try{
+	v1 = parseFloat(t1.token);
+	v2 = parseFloat(t2.token);
+    }catch(e){
+	v1 = t1.token.toString();
+	v2 = t2.token.toString();
+    }
+    v = v1 < v2;
+    result = {"type":"value","data_type":"bool","token":v.toString()};
+    return result;
+    
+};
+myCalc.prototype.calc_bool_ne = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    v1 = t1.token.toString();
+    v2 = t2.token.toString();
+    v = v1 !== v2;
+    result = {"type":"value","data_type":"bool","token":v.toString()};
+    if (this.debug){ console.log(v1, '!=', v2, '=', v); }
+    return result;
+};
+myCalc.prototype.calc_bool_eq = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    v1 = t1.token.toString();
+    v2 = t2.token.toString();
+    v = v1 === v2;
+    result = {"type":"value","data_type":"bool","token":v.toString()};
+    if (this.debug){ console.log(v1, '==', v2, '=', v); }
+    return result;
+};
+myCalc.prototype.calc_div = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    if(['float','int'].indexOf(t1.data_type) !== -1 && ['float','int'].indexOf(t2.data_type) !== -1){
+	v1 = parseFloat(t1.token);
+	v2 = parseFloat(t2.token);
+	v = v1 / v2;
+	result = {"type":"value","data_type":typeof v,"token":v.toString()};
+    }else{
+	throw "data type error :" + t1.token + t2.token;
+    }
+    return result;
+    
+};
+myCalc.prototype.calc_div_int = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    if(t1.data_type === 'int' && t2.data_type === 'int'){
+	v1 = parseFloat(t1.token);
+	v2 = parseFloat(t2.token);
+	v = v1 % v2;
+	result = {"type":"value","data_type":"int","token":v.toString()};
     }else{
 	throw "data type error :" + t1.token + t2.token;
     }
@@ -220,7 +357,7 @@ myCalc.prototype.pass1 = function(expr){
 			stack.push({"type":"operator","token":ch+ch2});
 			pos++;
 		    }else{
-			throw "undefind symbol" + ch;
+			throw "undefind symbol  " + ch;
 		    }
 		}
 		if(ch === '-'){
@@ -388,7 +525,7 @@ myCalc.prototype.pass2 = function(tokens){
     while(stack.length > 0){
 	 token = stack[stack.length - 1];
 	 if(token.type ==='left_brace'){
-	    throw "except error: unmatched barce" + this.expr; 
+	    throw "except error: unmatched barce  " + this.expr; 
 	}else{
 	    output.push(stack.pop());
 	}
@@ -411,7 +548,7 @@ myCalc.prototype.pass3 = function(expr){
 	    break;
 	case "operator":
 	    if(result.length < this.operators[token.token].opers){
-		throw "not enough argument" + token.token;
+		throw " not enough argument :" + token.token;
 	    }else{
 		var arg = [];
 		var i;
