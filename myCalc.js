@@ -38,7 +38,7 @@ function myCalc(expr, v){
 	'<=':{"priority":6,"dir":"ltr","opers":2,"calc":this.calc_bool_le},
 	'&&':{"priority":11,"dir":"ltr","opers":2,"calc":this.calc_bool_and},
 	'||':{"priority":12,"dir":"ltr","opers":2,"calc":this.calc_bool_or},
-	'in':{"priority":1,"dir":"ltr","opers":2,"calc":this.calc_array_in}
+	'in':{"priority":2,"dir":"ltr","opers":2,"calc":this.calc_array_in}
     };
     try{
 	var tokens = this.pass1(this.expr,this.varsa);//解析算式
@@ -54,7 +54,6 @@ myCalc.prototype.calc = function(v){
     this.vars = v;
     var result;
     try{
-	if(this.debug2){console.log("\n",this.vars);}
 	result = this.pass3(this.rp);
     }catch(e){
 	console.log(e);
@@ -103,10 +102,11 @@ myCalc.prototype.calc_dot = function(arg){
 	t1 = this.get_var(t1);
     }
     if(t1.data_type === 'object' && t2.data_type === 'name'){
-	result = this.get_var(t2.token,t1.token);
+	result = this.get_var(t2,t1.token);
     }else{
 	throw "data type error :" + t1.token + t2.token;
     }
+    if (this.debug){ console.log(t1.token, '.', t2.token, '=', result); }
     return result;
 };
 myCalc.prototype.calc_power = function(arg){
@@ -131,6 +131,7 @@ myCalc.prototype.calc_power = function(arg){
     }else{
 	throw "data type error :" + t1.token + t2.token;
     }
+    if (this.debug){ console.log(v1, '^', v2, '=', v); }
     return result;
     
 };
@@ -161,6 +162,27 @@ myCalc.prototype.calc_plus = function(arg){
     }else{
 	throw "data type error :" + t1.token + t2.token;
     }
+    if (this.debug){ console.log(v1, '+', v2, '=', v); }
+    return result;
+    
+};
+myCalc.prototype.calc_neg = function(arg){
+    var t1 = arg[0];
+    var v,v1,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(['float','int'].indexOf(t1.data_type) !== -1){
+	v1 = parseFloat(t1.token);
+	v = v1 * -1;
+	if(t1.data_type === 'float' || t2.data_type === 'float'){
+	    result = {"type":"value","data_type":"float","token":v.toString()};
+	}else{
+	    result = {"type":"value","data_type":"int","token":v.toString()};
+	}
+    }else{
+	throw "data type error :" + t1.token + t2.token;
+    }
     return result;
     
 };
@@ -186,6 +208,7 @@ myCalc.prototype.calc_sub = function(arg){
     }else{
 	throw "data type error :" + t1.token + t2.token;
     }
+    if (this.debug){ console.log(v1, '-', v2, '=', v); }
     return result;
     
 };
@@ -208,8 +231,140 @@ myCalc.prototype.calc_bool_gt = function(arg){
     }
     v = v1 < v2;
     result = {"type":"value","data_type":"bool","token":v.toString()};
+    if (this.debug){ console.log(v1, '<', v2, '=', v); }
     return result;
     
+};
+myCalc.prototype.calc_bool_and = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    v1 = t1.token.toString() === 'true';
+    v2 = t2.token.toString() === 'true';
+    
+    v = v1 && v2;
+    result = {"type":"value","data_type":"bool","token":v.toString()};
+    if (this.debug){ console.log(v1, '&&', v2, '=', v); }
+    return result;
+    
+};
+myCalc.prototype.calc_bool_or = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    v1 = t1.token.toString() === 'true';
+    v2 = t2.token.toString() === 'true';
+    
+    v = v1 || v2;
+    result = {"type":"value","data_type":"bool","token":v.toString()};
+    if (this.debug){ console.log(v1, '||', v2, '=', v); }
+    return result;
+    
+};
+myCalc.prototype.calc_bool_lt = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    try{
+	v1 = parseFloat(t1.token);
+	v2 = parseFloat(t2.token);
+    }catch(e){
+	v1 = t1.token.toString();
+	v2 = t2.token.toString();
+    }
+    v = v1 > v2;
+    result = {"type":"value","data_type":"bool","token":v.toString()};
+    if (this.debug){ console.log(v1, '>', v2, '=', v); }
+    return result;    
+};
+myCalc.prototype.calc_bool_ge = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    try{
+	v1 = parseFloat(t1.token);
+	v2 = parseFloat(t2.token);
+    }catch(e){
+	v1 = t1.token.toString();
+	v2 = t2.token.toString();
+    }
+    v = v1 <= v2;
+    result = {"type":"value","data_type":"bool","token":v.toString()};
+    if (this.debug){ console.log(v1, '<=', v2, '=', v); }
+    return result;
+    
+};
+myCalc.prototype.calc_bool_le = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    try{
+	v1 = parseFloat(t1.token);
+	v2 = parseFloat(t2.token);
+    }catch(e){
+	v1 = t1.token.toString();
+	v2 = t2.token.toString();
+    }
+    v = v1 >= v2;
+    result = {"type":"value","data_type":"bool","token":v.toString()};
+    if (this.debug){ console.log(v1, '>=', v2, '=', v); }
+    return result;    
+};
+myCalc.prototype.calc_array_in = function(arg){
+    var t1 = arg[0];
+    var t2 = arg[1];
+    var v,v1,v2,result;
+    if(t1.data_type === 'name'){
+	t1 = this.get_var(t1);
+    }
+    if(t2.data_type === 'name'){
+	t2 = this.get_var(t2);
+    }
+    if(['string','float','int'].indexOf(t1.data_type) !== -1 && t2.data_type === 'array'){
+	v1 = t1.token.toString();
+	v2 = t2.token;
+	v = v2.indexOf(v1);
+	if(v < 0){
+	    v = v2.indexOf(v1.toString());
+	}
+	if(v < 0){
+	    v = v2.indexOf(parseFloat(v1));
+	}
+	v = v >= 0;
+	result = {'type':'value','data_type':'bool','token':v.toString()};
+	if (this.debug){ console.log(v1, 'in', v2, '=', v); }
+	return result;
+    }
 };
 myCalc.prototype.calc_bool_ne = function(arg){
     var t1 = arg[0];
@@ -263,6 +418,7 @@ myCalc.prototype.calc_div = function(arg){
     }else{
 	throw "data type error :" + t1.token + t2.token;
     }
+    if (this.debug){ console.log(v1, '/', v2, '=', v); }
     return result;
     
 };
@@ -284,6 +440,7 @@ myCalc.prototype.calc_div_int = function(arg){
     }else{
 	throw "data type error :" + t1.token + t2.token;
     }
+    if (this.debug){ console.log(v1, '%', v2, '=', v); }
     return result;
     
 };
@@ -309,11 +466,13 @@ myCalc.prototype.calc_times = function(arg){
     }else{
 	throw "data type error :" + t1.token + t2.token;
     }
+    if (this.debug){ console.log(v1, '*', v2, '=', v); }
     return result;
     
 };
 myCalc.prototype.pass1 = function(expr){
     var stack = [];//存放解析出来的数据
+    expr = expr + ' ';
     var token = '';
     var stat = this.s_idle;
     var pos = 0;
@@ -326,8 +485,8 @@ myCalc.prototype.pass1 = function(expr){
 		pos++;
 	    }else if(this.c_digital.indexOf(ch) !== -1){
 		token = ch;
-		pos++;
 		stat = this.s_number_int;
+		pos++;
 	    }else if(this.c_prefix.indexOf(ch) !== -1){
 		token = ch;
 		pos++;
@@ -466,7 +625,7 @@ myCalc.prototype.pass1 = function(expr){
 	    break;
 	}
     }
-    if(this.debug){console.log(stack);}
+    //if(this.debug){console.log(stack);}
     
     return stack; 
 };
@@ -530,7 +689,6 @@ myCalc.prototype.pass2 = function(tokens){
 	    output.push(stack.pop());
 	}
     }
-    
     return output.reverse();
     
 };
@@ -540,8 +698,10 @@ myCalc.prototype.pass3 = function(expr){
     var stack = [];
     var token = '';
     var pos = 0;
+
     while(expr.length>0){
 	token = expr.pop();
+	console.log(token);
 	switch(token.type){
 	case "value":
 	    result.push(token);
@@ -555,7 +715,6 @@ myCalc.prototype.pass3 = function(expr){
 		for(i=0;i<this.operators[token.token].opers;i++){
 		    arg.push(result.pop());
 		}
-		if(this.debug2){console.log(arg,token.token);}
 		var r = this.do_token_calc(token.token,arg);
 		result.push(r);
 	    }
