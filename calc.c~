@@ -1,0 +1,58 @@
+#include"clac.h"
+
+
+stack *init(){
+  stack *head =(stack *)new malloc(sizeof(stack));
+  head->type = null;
+  head->data_type = null;
+  head->token = null;
+  head->next = null;
+  return head;
+  
+}
+
+void push(char *type,char *data_type,char *token,stack *head){
+  stack *new = (stack)new malloc(sizeof(stack));
+  new->type = type;
+  new->data_type = data_type;
+  new->token = token;
+  new->next = null;
+  add_list(new);  
+}
+stack *pop(stack *head){
+  if(head->next == null){
+    fprintf("stack is null\n");
+    return;
+  }
+  stack *tmp = head->next;
+  head->next = tmp->next;
+  return tmp;
+}
+void reverse(stack *head){
+  stack *tmp,*ima;
+  ima = head->next;
+  while(ima->next != null){
+    tmp = imp->next;
+    imp->next = tmp->next;
+    tmp->next = head->next;
+    head->next = tmp;
+  }
+}
+void add_list(stack *new){
+  if(head->next == null){
+    head->next = new;
+  }else{
+    new->next = head->next;
+    head->next = new;
+  }
+}
+void free_stack(stack *head){
+  stack *tmp;
+  tmp = head->next;
+  while(tmp != null){
+    head->next = tmp->next;
+    free(tmp);
+    tmp = head->next;
+  }
+  free(head);
+}
