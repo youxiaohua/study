@@ -6,6 +6,7 @@
 #include<string.h>
 #include<malloc.h>
 #include<ctype.h>
+#include<fcntl.h>
 
 
 #define s_idle 1
@@ -13,6 +14,7 @@
 #define s_number_int 3
 #define s_number_float 4
 #define s_name 5
+#define s_string 6
 
 
 #define LEFT_BRACE 0
@@ -24,7 +26,8 @@
 #define D_FLOAT 11
 #define D_NAME 12
 #define D_BOOL 13
-
+#define D_ARRAY 14
+#define D_STRING 15
 #define LTR 2
 #define RTL 1
 
@@ -46,13 +49,20 @@ stack *calc_div_int(stack **arg);
 stack *calc_times(stack **arg);
 stack *calc_gt(stack **arg);
 stack *calc_lt(stack **arg);
+stack *calc_array_in(stack **arg);
+stack *calc_le(stack **arg);
+stack *calc_ge(stack **arg);
+stack *calc_eq(stack **arg);
+stack *calc_ne(stack **arg);
+stack *calc_and(stack **arg);
+stack *calc_or(stack **arg);
 struct op{
   char ch[3];
-  int priority;
+   int priority;
   int dir;
   int opers;
   stack *(*fun)(stack **);
-}oper[10]={
+}oper[17]={
   {"(", 1, 0, 0,NULL},
   {")", 1, 0, 0,NULL},
   {"*", 3, LTR, 2, calc_times},
@@ -62,18 +72,15 @@ struct op{
   {"+", 4, LTR, 2, calc_plus},
   {"-", 4, LTR, 2, calc_sub},
   {">", 6, LTR, 2, calc_gt},
-  {"<", 6, LTR, 2, calc_lt}
+  {"<", 6, LTR, 2, calc_lt},
+  {"in",2, LTR, 2, calc_array_in},
+  {">=",6, LTR, 2, calc_ge},
+  {"<=",6, LTR, 2, calc_le},
+  {"==",7, LTR, 2, calc_eq},
+  {"!=",7, LTR, 2, calc_ne},
+  {"&&",11, LTR, 2, calc_and},
+  {"||",12, LTR, 2, calc_or}
 };
- /*
-   {".", 1, LTR, 2},
-   {"in",2, LTR, 2},
-   {">=",6, LTR, 2},
-   {"<=",6, LTR, 2},
-   {"==",7, LTR, 2},
-   {"!=",7, LTR, 2},
-   {"&&",11, LTR, 2},
-   {"||",12, LTR, 2}
- */
 
 stack *init();
 void pass1(char *expr);
@@ -86,7 +93,9 @@ void reverse(stack *head);
 stack *pop(stack *head);
 void push(int type,int data_type,char *token,stack *head);
 void push_stack(stack *p,stack *head);
+void go_wrong(char *err,stack *p);
 struct op *check_oper(char *ch);
+int stack_size(stack *head);
 
 
 

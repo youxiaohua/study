@@ -4,21 +4,30 @@
 
 
 
-stack *exprs; 
+stack *exprs = NULL; 
+stack *output = NULL;
+stack *result = NULL;
 int main(int argc,char **argv){
-  stack *output = init();
-  
+  output = init(); 
   exprs = init();
-  pass1("(123+8)/2+3^3");
- 
-  reverse(exprs);
-  show(exprs);
-  pass2(output);
-  reverse(output);
-  show(output);
-  calc(output);
-  free_stack(exprs);
-  free_stack(output);
+  char expr[100];
+  FILE *fp = fopen("./expr.txt","r");
+  while(!feof(fp)){
+    memset(expr,0,100);
+    if(!fgets(expr,100,fp)){
+      break;
+    }
+    pass1(expr);
+    reverse(exprs);
+    show(exprs);
+    pass2(output);
+    reverse(output);
+    show(output);
+    calc(output);
+    printf("----------------------------\n\n");
+  }
+  // free_stack(exprs);
+  // free_stack(output);
   
 }
 
@@ -77,6 +86,9 @@ void add_list(stack *new,stack *head){
 }
 void free_stack(stack *head){
   stack *tmp;
+  if(head == NULL){
+    return;
+  }
   tmp = head->next;
   while(tmp != NULL){
     head->next = tmp->next;
@@ -89,21 +101,31 @@ void show(stack *head){
   stack *tmp=head->next;
   while(tmp != NULL){
     switch(tmp->type){
-    case LEFT_BRACE:printf("left_brace\t");break;
-    case RIGHT_BRACE:printf("right_brace\t");break;
-    case OPERATOR:printf("operator\t");break;
+    case LEFT_BRACE:printf("left_brace\t\t");break;
+    case RIGHT_BRACE:printf("right_brace\t\t");break;
+    case OPERATOR:printf("operator\t\t");break;
     case VALUE:printf("value\t");break;
     }
     switch(tmp->data_type){
-    case D_INT:printf("int\t");break;
-    case D_FLOAT:printf("float\t");break;
-    case D_NAME:printf("name\t");break;
-    case D_BOOL:printf("bool\t");break;
+    case D_INT:printf("\tint\t");break;
+    case D_FLOAT:printf("\tfloat\t");break;
+    case D_NAME:printf("\tname\t");break;
+    case D_BOOL:printf("\tbool\t");break;
+    case D_STRING:printf("\tstring\t");break;
+    case D_ARRAY:printf("\tarray\t");break;
     }
     printf("%s \n",tmp->token);
     tmp = tmp->next;
   }
   printf("\n");
+}
+void go_wrong(char *err,stack *p){
+  fprintf(stderr,err);
+  if(result != NULL){free_stack(result);}
+  if(output != NULL){free_stack(output);}
+  if(exprs != NULL){free_stack(exprs);}
+  free_stack(p);
+  exit(0);
 }
 struct op *check_oper(char *ch){
   int size = sizeof(oper)/sizeof(struct op);
@@ -111,7 +133,6 @@ struct op *check_oper(char *ch){
   
   while(i<size){
     if(strcmp(oper[i].ch,ch) == 0){
-      // printf("--[%s]   \n",oper[i].ch);
       return &oper[i];
     }
     i++;
@@ -132,7 +153,7 @@ int stack_size(stack *head){
 void pass1(char *ep){
   char ch;
   char ch1[2]={0};
-  char token[20] = {0};
+  char token[30] = {0};
   int len = strlen(ep);
   int pos=0;
   int num=0;
@@ -153,6 +174,9 @@ void pass1(char *ep){
 	pos++;
 	num++;
 	stat = s_number_int;
+      }else if(ch == '"'){
+	pos++;
+	stat = s_string;
       }else if(ch == '['){
 	pos++;
 	stat = s_array;
@@ -169,11 +193,11 @@ void pass1(char *ep){
 	  ch2[0]=ch;
 	  ch2[1]=ep[pos+1];
 	  ch2[2]=0;
-	  if(check_oper(ch1)){
-	    push(OPERATOR,0,ch1,exprs);
-	  }else if(check_oper(ch2)){
+	  if(check_oper(ch2)){
 	    push(OPERATOR,0,ch2,exprs);
 	    pos++;
+	  }else if(check_oper(ch1)){
+	    push(OPERATOR,0,ch1,exprs);
 	  }
      	}
 	pos++;
@@ -195,7 +219,7 @@ void pass1(char *ep){
       }else{
 	push(VALUE,D_INT,token,exprs);
 	num=0;
-	memset(token,0,20);
+	memset(token,0,30);//对token里面的数据清零
 	stat = s_idle;
       }
       break;
@@ -208,7 +232,7 @@ void pass1(char *ep){
 	push(VALUE,D_FLOAT,token,exprs);
 	num=0;
 	stat = s_idle;
-	memset(token,0,20);
+	memset(token,0,30);
       }
       break;
     case s_name:
@@ -222,25 +246,50 @@ void pass1(char *ep){
 	num=0;
 	pos++;
 	stat = s_idle;
-	memset(token,0,20);
-      }else if(strstr("true false",token)){
+	memset(token,0,30);
+      }else if(strcmp("true",token)==0 || strcmp("false",token)==0){
 	push(VALUE,D_BOOL,token,exprs);
-	num=0;
+   	num=0;
 	stat = s_idle;
-	memset(token,0,20);
+	memset(token,0,30);
       }else if(strstr("in",token)){
 	push(OPERATOR,0,token,exprs);
 	num=0;
 	stat = s_idle;
-	memset(token,0,20);
+	memset(token,0,30);
       }else{
 	push(VALUE,D_NAME,token,exprs);
 	num=0;
 	stat = s_idle;
-	memset(token,0,20);
+	memset(token,0,30);
       }
       break;
-
+    case s_array:
+      if(ch == ']'){
+	push(VALUE,D_ARRAY,token,exprs);
+	num=0;
+	pos++;
+	stat = s_idle;
+	memset(token,0,30);
+      }else{
+	token[num]=ch;
+	num++;
+	pos++;
+      }
+      break;
+    case s_string:
+      if(ch == '"'){
+	push(VALUE,D_STRING,token,exprs);
+	num=0;
+	pos++;
+	stat = s_idle;
+	memset(token,0,30);
+      }else{
+	token[num]=ch;
+	num++;
+	pos++;
+      }
+      break;
     }
   }
 
@@ -268,22 +317,14 @@ void pass2(stack *output){
     }else if(p->type == OPERATOR){
       stack *o2 = oper->next;
       if(o2 != NULL){
-	//	printf("p->token = %s\n",p->token);
 	_op = check_oper(p->token);
-	//	printf("[%s]\n",_op->ch);
 	p1 = _op->priority;
-	//	printf("p1 = %d\n",p1);
 	dir = _op->dir;
-	//	printf("o2->token = %s\n",o2->token);
 	_op = check_oper(o2->token);
-	//	printf("[%s]\n",_op->ch);
 	p2 = _op->priority;
-	//	printf("p2 = %d\n",p2);
       }
       while( o2!=NULL && o2->type == OPERATOR && ((p1 >= p2 && dir==LTR) || (p1 > p2 && dir==RTL)) ){
 	push_stack(pop(oper),output);
-	//show(output);
-	//	o2 = NULL;
 	o2 = oper->next;
 	if(o2 != NULL){
 	  _op = check_oper(o2->token);
@@ -297,15 +338,14 @@ void pass2(stack *output){
   while(oper->next != NULL){
     p = oper->next;
     if(p->type == LEFT_BRACE){
-      fprintf(stderr,"left_brace mismatch");
-      exit(0);
+      go_wrong("left_brace mismatch",oper);
     }
     push_stack(pop(oper),output);
   }
   free_stack(oper);
 }
 void calc(stack *output){
-  stack *result = init();
+  result = init();
   stack *p;
   int num;
   stack *arg[2];
@@ -317,67 +357,67 @@ void calc(stack *output){
       break;
     case OPERATOR:
       num = check_oper(p->token)->opers;
-      printf("size = %d\n",stack_size(result));
       if(num <= stack_size(result) ){
 	for(int i=num-1;i>=0 ;i--){
 	  arg[i] = pop(result);
-	  printf("[%d]%s\n",i,arg[i]->token);
 	}
 	p = check_oper(p->token)->fun(arg);
 	push_stack(p,result);
-		   
-	
       }else{
-	
+	fprintf(stderr,"not enough parameters");
+	exit(0);
       }
       break;
     }
   }
-  printf("result\n");
+  if(stack_size(result)>1){
+    go_wrong("expr error\n",NULL);
+  }
   show(result);
   free_stack(result);
 }
 
 stack *calc_plus(stack **arg){
-  if(arg[0]->data_type == D_NAME){
-    
-  }
-  if(arg[1]->data_type == D_NAME){
-    
-  }
-  double a = atof(arg[0]->token);
-  double b = atof(arg[1]->token);
-  double v = a + b;
-  int v1 = (int)v;
+  if(arg[0]->data_type == D_NAME){  }
+  if(arg[1]->data_type == D_NAME){  }
+				       
   if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
       (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+
+    double a = atof(arg[0]->token);
+    double b = atof(arg[1]->token);
+    double v = a + b;
+    int v1 = (int)v;
     if(v1 < v){
       arg[0]->data_type = D_FLOAT;
-      memset(arg[0]->token,0,30);   
+      memset(arg[0]->token,0,30);
       gcvt(v,4,arg[0]->token);
     }else{
       arg[0]->data_type = D_INT;
       memset(arg[0]->token,0,30);
       sprintf(arg[0]->token,"%d",v1);
     }
+  }else if(arg[0]->data_type == D_STRING || arg[1]->data_type == D_STRING){
+    arg[0]->data_type = D_STRING;
+    memset(arg[0]->token,0,30);
+    strcat(arg[0]->token,arg[1]->token);
   }else{
-    
+    go_wrong("data type error",NULL);
   }
+  free(arg[1]);
   return arg[0];
 }
 stack *calc_sub(stack **arg){
-  if(arg[0]->data_type == D_NAME){
-    
-  }
-  if(arg[1]->data_type == D_NAME){
-    
-  }
-  double a = atof(arg[0]->token);
-  double b = atof(arg[1]->token);
-  double v = a - b;
-  int v1 = (int)v;
+  if(arg[0]->data_type == D_NAME){  }
+  if(arg[1]->data_type == D_NAME){  }
+
   if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
       (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+    
+    double a = atof(arg[0]->token);
+    double b = atof(arg[1]->token);
+    double v = a - b;
+    int v1 = (int)v;
     if(v1 < v){
       arg[0]->data_type = D_FLOAT;
       memset(arg[0]->token,0,30);   
@@ -388,23 +428,22 @@ stack *calc_sub(stack **arg){
       sprintf(arg[0]->token,"%d",v1);
     }
   }else{
-    
+    go_wrong("data type error",NULL);
   }
+  free(arg[1]);
   return arg[0];
 }
 stack *calc_div(stack **arg){
-  if(arg[0]->data_type == D_NAME){
-    
-  }
-  if(arg[1]->data_type == D_NAME){
-    
-  }
-  double a = atof(arg[0]->token);
-  double b = atof(arg[1]->token);
-  double v = a / b;
-  int v1 = (int)v;
+  if(arg[0]->data_type == D_NAME){}
+  if(arg[1]->data_type == D_NAME){}
+
   if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
       (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+
+    double a = atof(arg[0]->token);
+    double b = atof(arg[1]->token);
+    double v = a / b;
+    int v1 = (int)v;
     if(v1 < v){
       arg[0]->data_type = D_FLOAT;
       memset(arg[0]->token,0,30);   
@@ -415,20 +454,34 @@ stack *calc_div(stack **arg){
       sprintf(arg[0]->token,"%d",v1);
     }
   }else{
-    
+    go_wrong("data type error",NULL);
   }
+  free(arg[1]);
   return arg[0];
 }
 stack *calc_div_int(stack **arg){
+  if(arg[0]->data_type == D_NAME){  }
+  if(arg[1]->data_type == D_NAME){  }
+  
+  if( arg[0]->data_type == D_INT && arg[1]->data_type == D_INT){
+    int a = atoi(arg[0]->token);
+    int b = atoi(arg[1]->token);
+    int v = a % b;
+    arg[0]->data_type = D_INT;
+    memset(arg[0]->token,0,30);
+    sprintf(arg[0]->token,"%d",v);
+    
+  }else{
+    go_wrong("data type error",NULL);
+  }
+  free(arg[1]);
+  return arg[0];
   
 }
 stack *calc_times(stack **arg){
-  if(arg[0]->data_type == D_NAME){
-    
-  }
-  if(arg[1]->data_type == D_NAME){
-    
-  }
+  if(arg[0]->data_type == D_NAME){  }
+  if(arg[1]->data_type == D_NAME){  }
+  
   double a = atof(arg[0]->token);
   double b = atof(arg[1]->token);
   double v = a * b;
@@ -445,8 +498,9 @@ stack *calc_times(stack **arg){
       sprintf(arg[0]->token,"%d",v1);
     }
   }else{
-    
+    go_wrong("data type error",NULL);
   }
+  free(arg[1]);
   return arg[0]; 
 }
 stack *calc_power(stack **arg){
@@ -475,14 +529,255 @@ stack *calc_power(stack **arg){
       sprintf(arg[0]->token,"%d",v1);
     }
   }else{
-    
+    go_wrong("data type error",NULL);
   }
+  free(arg[1]);
   return arg[0];
 }
 stack *calc_gt(stack **arg){
-  
+  int i;
+  if(arg[0]->data_type == D_NAME){
+    
+  }
+  if(arg[1]->data_type == D_NAME){
+    
+  }
+  if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
+                                    (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+    
+    double a = atof(arg[0]->token);
+    double b = atof(arg[1]->token);
+    i = a-b;
+  }else if(arg[0]->data_type == D_STRING && arg[1]->data_type == D_STRING){
+    i = strcmp(arg[0]->token,arg[1]->token); 
+  }else{
+    go_wrong("data type error",NULL);
+  }
+  if(i > 0){
+     arg[0]->data_type = D_BOOL;
+     memset(arg[0]->token,0,30);   
+     strcpy(arg[0]->token,"true");
+  }else{
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);
+    strcpy(arg[0]->token,"false");
+  }
+  free(arg[1]);
+  return arg[0]; 
 }
 stack *calc_lt(stack **arg){
+  int i;
+  if(arg[0]->data_type == D_NAME){}
+  if(arg[1]->data_type == D_NAME){}
   
+  if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
+                                    (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+    
+    double a = atof(arg[0]->token);
+    double b = atof(arg[1]->token);
+    i = a-b;
+  }else if(arg[0]->data_type == D_STRING && arg[1]->data_type == D_STRING){
+    i = strcmp(arg[0]->token,arg[1]->token); 
+  }else{
+    go_wrong("data type error",NULL);
+  }
+  if(i < 0){
+     arg[0]->data_type = D_BOOL;
+     memset(arg[0]->token,0,30);   
+     strcpy(arg[0]->token,"true");
+  }else{
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);
+    strcpy(arg[0]->token,"false");
+  }
+  free(arg[1]);
+  return arg[0]; 
+}
+stack *calc_array_in(stack **arg){
+  if(arg[0]->data_type == D_NAME){}
+  if(arg[1]->data_type == D_NAME){}
+  if(arg[1]->data_type == D_ARRAY){
+    char token[30]={0};
+    int ofg = 0;//判断查找的状态
+    arg[0]->data_type = D_BOOL;
+    strcpy(token,arg[1]->token);
+    char *p = strtok(token,",");
+    while(p){
+      if(strcmp(p,arg[0]->token)== 0){
+	ofg = 1;
+	break;
+      }
+      p = strtok(NULL,",");
+    }
+    memset(arg[0]->token,0,30);
+    if(ofg){
+      strcpy(arg[0]->token,"true");
+    }else{
+      strcpy(arg[0]->token,"false");
+    }
+  }else{
+    go_wrong("data type error",NULL);
+  }
+  free(arg[1]);
+  return arg[0];
+}
+stack *calc_le(stack **arg){
+  int i;
+  if(arg[0]->data_type == D_NAME){}
+  if(arg[1]->data_type == D_NAME){}
+  
+  if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
+      (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+    
+    double a = atof(arg[0]->token);
+    double b = atof(arg[1]->token);
+    i = a-b;
+  }else if(arg[0]->data_type == D_STRING && arg[1]->data_type == D_STRING){
+    i = strcmp(arg[0]->token,arg[1]->token); 
+  }else{
+    go_wrong("data type error",NULL);
+  }
+  if(i <= 0){
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);   
+    strcpy(arg[0]->token,"true");
+  }else{
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);
+    strcpy(arg[0]->token,"false");
+  }
+  free(arg[1]);
+  return arg[0]; 
+}
+stack *calc_ge(stack **arg){
+  int i;
+  if(arg[0]->data_type == D_NAME){}
+  if(arg[1]->data_type == D_NAME){}
+  
+  if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
+      (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+    
+    double a = atof(arg[0]->token);
+    double b = atof(arg[1]->token);
+    i = a-b;
+  }else if(arg[0]->data_type == D_STRING && arg[1]->data_type == D_STRING){
+    i = strcmp(arg[0]->token,arg[1]->token); 
+  }else{
+    go_wrong("data type error",NULL);
+  }
+  if(i >= 0){
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);   
+    strcpy(arg[0]->token,"true");
+  }else{
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);
+    strcpy(arg[0]->token,"false");
+  }
+  free(arg[1]);
+  return arg[0]; 
+}
+stack *calc_eq(stack **arg){
+  int i;
+  if(arg[0]->data_type == D_NAME){}
+  if(arg[1]->data_type == D_NAME){}
+  
+  if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
+      (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+    
+    double a = atof(arg[0]->token);
+    double b = atof(arg[1]->token);
+    i = a-b;
+  }else if(arg[0]->data_type == D_STRING && arg[1]->data_type == D_STRING){
+    i = strcmp(arg[0]->token,arg[1]->token); 
+  }else{
+    go_wrong("data type error",NULL);
+  }
+  if(i == 0){
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);   
+    strcpy(arg[0]->token,"true");
+  }else{
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);
+    strcpy(arg[0]->token,"false");
+  }
+  free(arg[1]);
+  return arg[0]; 
+}
+stack *calc_ne(stack **arg){
+  int i;
+  if(arg[0]->data_type == D_NAME){}
+  if(arg[1]->data_type == D_NAME){}
+  
+  if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
+      (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+    
+    double a = atof(arg[0]->token);
+    double b = atof(arg[1]->token);
+    i = a-b;
+  }else if(arg[0]->data_type == D_STRING && arg[1]->data_type == D_STRING){
+    i = strcmp(arg[0]->token,arg[1]->token); 
+  }else{
+    go_wrong("data type error",NULL);
+  }
+  if(i != 0){
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);   
+    strcpy(arg[0]->token,"true");
+  }else{
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);
+    strcpy(arg[0]->token,"false");
+  }
+  free(arg[1]);
+  return arg[0]; 
+}
+stack *calc_and(stack **arg){
+  int i;
+  if(arg[0]->data_type == D_NAME){}
+  if(arg[1]->data_type == D_NAME){}
+  
+  if( arg[0]->data_type == D_BOOL && arg[1]->data_type == D_BOOL ){
+    int v1 = strcmp("true",arg[0]->token);
+    int v2 = strcmp("true",arg[0]->token);
+    i = v1 + v2;
+  }else{
+    go_wrong("data type error",NULL);
+  }
+  if(i == 0){
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);   
+    strcpy(arg[0]->token,"true");
+  }else{
+    arg[0]->data_type = D_BOOL;
+    memset(arg[0]->token,0,30);
+    strcpy(arg[0]->token,"false");
+  }
+  free(arg[1]);
+  return arg[0]; 
+}
+stack *calc_or(stack **arg){
+  if(arg[0]->data_type == D_NAME){}
+  if(arg[1]->data_type == D_NAME){}
+  
+  if( arg[0]->data_type == D_BOOL && arg[1]->data_type == D_BOOL ){
+    int v1 = strcmp("true",arg[0]->token);
+    int v2 = strcmp("true",arg[0]->token);
+    if(v1 == 0 || v2 == 0){
+      arg[0]->data_type = D_BOOL;
+      memset(arg[0]->token,0,30);   
+      strcpy(arg[0]->token,"true");
+    }else{
+      arg[0]->data_type = D_BOOL;
+      memset(arg[0]->token,0,30);
+      strcpy(arg[0]->token,"false");
+    }
+  }else{
+    go_wrong("data type error",NULL);
+  }
+ 
+  free(arg[1]);
+  return arg[0];
 }
 
