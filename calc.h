@@ -78,6 +78,7 @@ struct op{
 stack *init();
 void pass1(char *expr);
 void pass2(stack *output);
+void calc(stack *output);
 void show(stack *head);
 void free_stack(stack *head);
 void add_list(stack *new,stack *head);

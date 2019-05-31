@@ -1,6 +1,27 @@
 #include"calc.h"
 
 
+
+
+
+stack *exprs; 
+int main(int argc,char **argv){
+  stack *output = init();
+  
+  exprs = init();
+  pass1("(123+8)/2+3^3");
+ 
+  reverse(exprs);
+  show(exprs);
+  pass2(output);
+  reverse(output);
+  show(output);
+  calc(output);
+  free_stack(exprs);
+  free_stack(output);
+  
+}
+
 stack *init(){
   stack *head =(stack *)malloc(sizeof(stack));
   head->next = NULL;
@@ -67,7 +88,19 @@ void free_stack(stack *head){
 void show(stack *head){
   stack *tmp=head->next;
   while(tmp != NULL){
-    printf("%s ",tmp->token);
+    switch(tmp->type){
+    case LEFT_BRACE:printf("left_brace\t");break;
+    case RIGHT_BRACE:printf("right_brace\t");break;
+    case OPERATOR:printf("operator\t");break;
+    case VALUE:printf("value\t");break;
+    }
+    switch(tmp->data_type){
+    case D_INT:printf("int\t");break;
+    case D_FLOAT:printf("float\t");break;
+    case D_NAME:printf("name\t");break;
+    case D_BOOL:printf("bool\t");break;
+    }
+    printf("%s \n",tmp->token);
     tmp = tmp->next;
   }
   printf("\n");
@@ -85,24 +118,16 @@ struct op *check_oper(char *ch){
   }
   return NULL;
 }
-stack *exprs;
-
-stack *result;
-
-int main(int argc,char **argv){
-  stack *output = init();
-  
-  exprs = init();
-  pass1("(2 + 1) - 3 / 2");
- 
-  reverse(exprs);
-  show(exprs);
-  pass2(output);
-  reverse(output);
-  show(output);
-
-  
+int stack_size(stack *head){
+  int i=0;
+  stack *p=head;
+  while(p->next != NULL){
+    i++;
+    p = p->next;
+  }
+  return i;
 }
+
 
 void pass1(char *ep){
   char ch;
@@ -256,8 +281,9 @@ void pass2(stack *output){
 	//	printf("p2 = %d\n",p2);
       }
       while( o2!=NULL && o2->type == OPERATOR && ((p1 >= p2 && dir==LTR) || (p1 > p2 && dir==RTL)) ){
-	push_stack(pop(oper),oper);
-	show(output);
+	push_stack(pop(oper),output);
+	//show(output);
+	//	o2 = NULL;
 	o2 = oper->next;
 	if(o2 != NULL){
 	  _op = check_oper(o2->token);
@@ -265,7 +291,7 @@ void pass2(stack *output){
 	}	
       }
       push_stack(p,oper);
-     
+      
     }
   }
   while(oper->next != NULL){
@@ -290,40 +316,168 @@ void calc(stack *output){
       push_stack(p,result);
       break;
     case OPERATOR:
-      num = check_oper(p->token)->priority;
-      if(num <= (sizeof(result)/sizeof(stack)) ){
-	for(int i=0;i<num;i++){
+      num = check_oper(p->token)->opers;
+      printf("size = %d\n",stack_size(result));
+      if(num <= stack_size(result) ){
+	for(int i=num-1;i>=0 ;i--){
 	  arg[i] = pop(result);
+	  printf("[%d]%s\n",i,arg[i]->token);
 	}
-	check_oper(p->token)->fun(arg);
+	p = check_oper(p->token)->fun(arg);
+	push_stack(p,result);
+		   
 	
       }else{
 	
       }
-      
       break;
     }
   }
-  
+  printf("result\n");
+  show(result);
+  free_stack(result);
 }
 
 stack *calc_plus(stack **arg){
-  printf("++++++++++++++++\n");
+  if(arg[0]->data_type == D_NAME){
+    
+  }
+  if(arg[1]->data_type == D_NAME){
+    
+  }
+  double a = atof(arg[0]->token);
+  double b = atof(arg[1]->token);
+  double v = a + b;
+  int v1 = (int)v;
+  if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
+      (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+    if(v1 < v){
+      arg[0]->data_type = D_FLOAT;
+      memset(arg[0]->token,0,30);   
+      gcvt(v,4,arg[0]->token);
+    }else{
+      arg[0]->data_type = D_INT;
+      memset(arg[0]->token,0,30);
+      sprintf(arg[0]->token,"%d",v1);
+    }
+  }else{
+    
+  }
+  return arg[0];
 }
 stack *calc_sub(stack **arg){
-  
+  if(arg[0]->data_type == D_NAME){
+    
+  }
+  if(arg[1]->data_type == D_NAME){
+    
+  }
+  double a = atof(arg[0]->token);
+  double b = atof(arg[1]->token);
+  double v = a - b;
+  int v1 = (int)v;
+  if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
+      (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+    if(v1 < v){
+      arg[0]->data_type = D_FLOAT;
+      memset(arg[0]->token,0,30);   
+      gcvt(v,4,arg[0]->token);
+    }else{
+      arg[0]->data_type = D_INT;
+      memset(arg[0]->token,0,30);
+      sprintf(arg[0]->token,"%d",v1);
+    }
+  }else{
+    
+  }
+  return arg[0];
 }
 stack *calc_div(stack **arg){
-  
+  if(arg[0]->data_type == D_NAME){
+    
+  }
+  if(arg[1]->data_type == D_NAME){
+    
+  }
+  double a = atof(arg[0]->token);
+  double b = atof(arg[1]->token);
+  double v = a / b;
+  int v1 = (int)v;
+  if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
+      (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+    if(v1 < v){
+      arg[0]->data_type = D_FLOAT;
+      memset(arg[0]->token,0,30);   
+      gcvt(v,4,arg[0]->token);
+    }else{
+      arg[0]->data_type = D_INT;
+      memset(arg[0]->token,0,30);
+      sprintf(arg[0]->token,"%d",v1);
+    }
+  }else{
+    
+  }
+  return arg[0];
 }
 stack *calc_div_int(stack **arg){
   
 }
 stack *calc_times(stack **arg){
-  
+  if(arg[0]->data_type == D_NAME){
+    
+  }
+  if(arg[1]->data_type == D_NAME){
+    
+  }
+  double a = atof(arg[0]->token);
+  double b = atof(arg[1]->token);
+  double v = a * b;
+  int v1 = (int)v;
+  if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
+      (arg[1]->data_type == D_INT || arg[1]->data_type == D_FLOAT)){
+    if(v1 < v){
+      arg[0]->data_type = D_FLOAT;
+      memset(arg[0]->token,0,30);   
+      gcvt(v,4,arg[0]->token);
+    }else{
+      arg[0]->data_type = D_INT;
+      memset(arg[0]->token,0,30);
+      sprintf(arg[0]->token,"%d",v1);
+    }
+  }else{
+    
+  }
+  return arg[0]; 
 }
 stack *calc_power(stack **arg){
-  
+   if(arg[0]->data_type == D_NAME){
+    
+  }
+  if(arg[1]->data_type == D_NAME){
+    
+  }
+  double v = 1;
+  if( (arg[0]->data_type == D_INT || arg[0]->data_type == D_FLOAT) &&
+      arg[1]->data_type == D_INT ){
+    double a = atof(arg[0]->token);
+    int b = atoi(arg[1]->token);
+    for(int i=0;i<b;i++){
+      v = v * a;
+    }
+    int v1 = (int)v;
+    if(v1 < v){
+      arg[0]->data_type = D_FLOAT;
+      memset(arg[0]->token,0,30);   
+      gcvt(v,4,arg[0]->token);
+    }else{
+      arg[0]->data_type = D_INT;
+      memset(arg[0]->token,0,30);
+      sprintf(arg[0]->token,"%d",v1);
+    }
+  }else{
+    
+  }
+  return arg[0];
 }
 stack *calc_gt(stack **arg){
   
